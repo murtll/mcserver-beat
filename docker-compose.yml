@@ -31,7 +31,7 @@ services:
       traefik.http.middlewares.beat-compress.compress: true
       traefik.http.routers.beat.middlewares: beat-stripprefix,beat-compress
     healthcheck:
-      test: ["/usr/bin/beat", "--health"]
+      test: ["CMD", "/usr/bin/beat", "--health"]
       interval: 10s
       retries: 3
       timeout: 1s
