@@ -64,7 +64,10 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ vars.SERVER }} "mkdir -p ${{ github.repository }}"
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no docker-compose.configured.yml ${{ secrets.SSH_USER }}@${{ vars.SERVER }}:${{ github.repository }}/docker-compose.yml
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ vars.SERVER }} "cd ${{ github.repository }} && docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ github.token }} && docker compose pull && docker compose up -d"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ vars.SERVER }} "cd ${{ github.repository }} \
+            && docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ github.repository_owner }} -p ${{ github.token }} \
+            && docker compose pull \
+            && docker compose up -d"
 
       - name: Success notify
         if: ${{ success() }}
