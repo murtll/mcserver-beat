@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -53,17 +54,18 @@ func Load(count int) (map[int]int, error) {
 		return nil, err
 	}
 
-	if count > len(stringKeys) {
-		count = len(stringKeys)
-	}
-
 	keys := make([]int, 0)
 	for _, stringK := range stringKeys {
 		k, err := strconv.Atoi(stringK)
 		if err != nil {
-			return nil, err
+			log.Default().Printf("Was not able to parse Redis key '%s': %s. Skipping.", stringK, err)
+			continue
 		}
 		keys = append(keys, k)
+	}
+
+	if count > len(keys) {
+		count = len(keys)
 	}
 
 	sort.Ints(keys)
