@@ -33,6 +33,7 @@ func GetIntOrDefault(key string, defaultValue int) int {
 
 var ListenAddr = GetStrOrDefault("LISTEN_ADDR", ":1620")
 var ListenPath = GetStrOrDefault("LISTEN_PATH", "/graphinfo")
+var HealthPath = GetStrOrDefault("HEALTH_PATH", "/_healthz")
 
 var redisHost = GetStrOrDefault("REDIS_HOST", "localhost")
 var redisPort = GetStrOrDefault("REDIS_PORT", "6379")

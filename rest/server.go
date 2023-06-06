@@ -87,10 +87,20 @@ var server = &http.Server{
 
 func init() {
 	mux.HandleFunc(config.ListenPath, handleGraphInfo)
-	mux.HandleFunc("/_healthz", handleHealthInfo)
+	mux.HandleFunc(config.HealthPath, handleHealthInfo)
 }
 
 func Start() error {
 	log.Default().Printf("Starting server on http://%s", server.Addr)
 	return server.ListenAndServe()
+}
+
+func Health() (string, error) {
+	res, err := http.Get("http://" + config.ListenAddr + config.HealthPath)
+	if err != nil {
+		return "Unhealthy", err
+	}
+	rawBody := make([]byte, res.ContentLength)
+	res.Body.Read(rawBody)
+	return string(rawBody), nil
 }
