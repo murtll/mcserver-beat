@@ -13,6 +13,11 @@ type GraphResponse struct {
 	Data []PlayerCount `json:"data"`
 }
 
+type HealthResponse struct {
+	Status  string `json:"status"`
+	Version string `json:"version"`
+}
+
 type PlayerCount struct {
 	Number int `json:"number"`
 	Time   utils.JSONTime `json:"time"`

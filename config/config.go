@@ -48,3 +48,5 @@ var EntryNumber = GetIntOrDefault("ENTRY_NUMBER", 10)
 var PollingInterval = time.Duration(GetIntOrDefault("POLLING_INTERVAL", 5) * int(time.Second))
 var PollingURL = GetStrOrDefault("POLLING_URL", "https://api.minetools.eu/query/play.mcbrawl.ru/25565")
 var PollingSchema = GetStrOrDefault("POLLING_SCHEMA", "Players")
+
+var Version = GetStrOrDefault("APP_VERSION", "0.1.0")

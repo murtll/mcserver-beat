@@ -15,14 +15,16 @@ func Start() {
 		time.Sleep(config.PollingInterval)
 		res, err := http.Get(config.PollingURL)
 		if err != nil {
-			log.Default().Printf("Was not able to contact %s.", config.PollingURL)
+			log.Default().Printf("Was not able to contact %s: %s.", config.PollingURL, err)
+			continue
 		}
 		rawBody := make([]byte, res.ContentLength)
 		res.Body.Read(rawBody)
 		var body map[string]any
 		err = json.Unmarshal(rawBody, &body)
 		if err != nil {
-			log.Default().Printf("Was not able to unmarshal %s.", rawBody)
+			log.Default().Printf("Was not able to unmarshal %s: %s.", rawBody, err)
+			continue
 		}
 		data := int(body[config.PollingSchema].(float64))
 		log.Default().Printf("Got '%d' count. Saving.", data)

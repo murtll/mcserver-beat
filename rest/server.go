@@ -13,9 +13,13 @@ import (
 
 var mux = http.NewServeMux()
 
+func setResponseDefaults(w *http.ResponseWriter) {
+	(*w).Header().Add("content-type", "application/json")
+}
+
 func handleGraphInfo(w http.ResponseWriter, r *http.Request) {
 	log.Default().Printf("%s %s%s?%s", r.Method, r.Host, r.URL.Path, r.URL.RawQuery)
-	w.Header().Add("content-type", "application/json")
+	setResponseDefaults(&w)
 	if r.Method != http.MethodGet {
 		data, err := json.Marshal(entities.RestError{
 			Message: "Method not allowed.",
@@ -52,6 +56,7 @@ func handleGraphInfo(w http.ResponseWriter, r *http.Request) {
 
 func handleHealthInfo(w http.ResponseWriter, r *http.Request) {
 	log.Default().Printf("%s %s%s?%s", r.Method, r.Host, r.URL.Path, r.URL.RawQuery)
+	setResponseDefaults(&w)
 	if r.Method != http.MethodGet {
 		data, err := json.Marshal(entities.RestError{
 			Message: "Method not allowed.",
@@ -64,7 +69,15 @@ func handleHealthInfo(w http.ResponseWriter, r *http.Request) {
 		w.Write(data)
 		return
 	}
-	w.Write([]byte("Ok."))
+	data, err := json.Marshal(entities.HealthResponse{
+		Status: "OK",
+		Version: config.Version,
+	})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write(data)
 }
 
 var server = &http.Server{
