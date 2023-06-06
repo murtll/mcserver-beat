@@ -11,7 +11,7 @@ import (
 )
 
 func Start() {
-	for ;; {
+	for {
 		time.Sleep(config.PollingInterval)
 		res, err := http.Get(config.PollingURL)
 		if err != nil {
@@ -26,6 +26,9 @@ func Start() {
 		}
 		data := int(body[config.PollingSchema].(float64))
 		log.Default().Printf("Got '%d' count. Saving.", data)
-		service.Store(data, config.EntryTTL)
+		err = service.Store(data, config.EntryTTL)
+		if err != nil {
+			log.Default().Printf("Was not able to store data: %s", err)
+		}
 	}
 }
