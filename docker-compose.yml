@@ -31,7 +31,7 @@ services:
       traefik.http.middlewares.beat-compress.compress: true
       traefik.http.routers.beat.middlewares: beat-stripprefix,beat-compress
     healthcheck:
-      test: /usr/bin/beat --health
+      test: ["/usr/bin/beat", "--health"]
       interval: 10s
       retries: 3
       timeout: 1s
@@ -51,7 +51,7 @@ services:
     networks:
       - beat
     healthcheck:
-      test: sh -c 'redis-cli ping && test "$$(redis-cli ping)" == "PONG"'
+      test: redis-cli ping && test "$$(redis-cli ping)" == "PONG"
       interval: 10s
       retries: 3
       timeout: 1s
