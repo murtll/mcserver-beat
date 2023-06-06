@@ -1,0 +1,92 @@
+name: Deploy
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    name: Deploy
+    environment:
+      name: ${{ github.ref_name }}
+      url: ${{ github.ref_name == 'master' && 'https://mcbrawl.ru/api/beat' || 'https://dev.mcbrawl.ru/api/beat' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get previous tag
+        id: latest-tag
+        uses: WyriHaximus/github-action-get-previous-tag@v1
+        with:
+          fallback: 0.1.0
+
+      - name: Set image name and tag
+        run: |
+          if [[ -n "${{ inputs.image }}" ]]; then IMAGE="${{ inputs.image }}"; else IMAGE="${{ vars.DOCKER_REGISTRY }}/${{ github.repository }}"; fi
+          if [[ -n "${{ inputs.tag }}" ]]; then TAG=${{ inputs.tag }}; else TAG=${{ steps.latest-tag.outputs.tag }}; fi
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Configure docker-compose.yml
+        run: |
+          docker compose config > docker-compose.configured.yml
+        env:
+          PORT: ${{ vars.PORT }}
+          ORIGIN: ${{ vars.ORIGIN }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          PATH_PREFIX: ${{ vars.PATH_PREFIX }}
+          IMAGE: ${{ env.IMAGE }}
+          TAG: ${{ env.TAG }}
+          REDIS_HOST: ${{ vars.REDIS_HOST }}
+          REDIS_PORT: ${{ vars.REDIS_PORT }}
+          POLLING_URL: ${{ vars.POLLING_URL }}
+          POLLING_SCHEMA: ${{ vars.POLLING_SCHEMA }}
+
+      - name: Deploy
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ vars.SERVER }} "mkdir -p ${{ github.repository }}"
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no docker-compose.configured.yml ${{ secrets.SSH_USER }}@${{ vars.SERVER }}:${{ github.repository }}/docker-compose.yml
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ vars.SERVER }} "cd ${{ github.repository }} && docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ github.token }} && docker compose pull && docker compose up -d"
+
+      - name: Success notify
+        if: ${{ success() }}
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ✅ ${{ github.actor }} pushed changes and job ${{ github.job }} succeed.
+            see workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Failure notify
+        if: ${{ failure() }}
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ ${{ github.actor }} pushed changes and job ${{ github.job }} failed.
+            see workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Cleanup images
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ vars.SERVER }} "docker image prune -af"
+        continue-on-error: true

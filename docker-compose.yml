@@ -11,9 +11,9 @@ services:
       - beat
     environment:
       LISTEN_ADDR: ":${PORT}"
-      ORIGIN: ${ORIGIN}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
+      ORIGIN: ${ORIGIN:-https://${DEPLOY_HOST}}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
       POLLING_URL: ${POLLING_URL}
       POLLING_SCHEMA: ${POLLING_SCHEMA}
     depends_on:
@@ -22,12 +22,12 @@ services:
     labels:
       traefik.enable: true
       traefik.docker.network: traefik-net
-      traefik.http.routers.beat.rule: 'Host(`${DEPLOY_HOST}`) && PathPrefix(`/api/beat`)'
+      traefik.http.routers.beat.rule: 'Host(`${DEPLOY_HOST}`) && PathPrefix(`${PATH_PREFIX}`)'
       traefik.http.routers.beat.entrypoints: https
       traefik.http.routers.beat.tls: true
       traefik.http.routers.beat.tls.certresolver: letsencrypt
       traefik.http.services.beat.loadBalancer.server.port: ${PORT}
-      traefik.http.middlewares.beat-stripprefix.stripprefix.prefixes: /api/beat
+      traefik.http.middlewares.beat-stripprefix.stripprefix.prefixes: ${PATH_PREFIX}
       traefik.http.middlewares.beat-compress.compress: true
       traefik.http.routers.beat.middlewares: beat-stripprefix,beat-compress
     healthcheck:

@@ -1,0 +1,154 @@
+name: Build and deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - dev
+    paths-ignore:
+      - 'docker-compose.yml'
+
+jobs:
+  build:
+    concurrency:
+      group: ${{ github.job }}-${{ github.ref_name }}
+      cancel-in-progress: true
+    name: Build
+    runs-on: ubuntu-22.04
+    outputs:
+      image_name: ${{ steps.image-tag-name.outputs.image_name }}
+      image_tag: ${{ steps.image-tag-name.outputs.tag }}
+      previous_tag: ${{ steps.previous-tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get previous tag
+        if: ${{ github.ref_name == 'master' }}
+        id: previous-tag
+        uses: WyriHaximus/github-action-get-previous-tag@v1
+        with:
+          fallback: 0.1.0
+
+      - name: Check if it is new version
+        if: ${{ github.ref_name == 'master' }}
+        id: check-version
+        run: |
+          CHANGED=( $(git diff ${{ steps.previous-tag.outputs.tag }}..HEAD --name-only) )
+          echo "Changed files since last tag (${{ steps.previous-tag.outputs.tag }}):"
+          printf '%s\n' "${CHANGED[@]}"
+          
+          while read LINE; do
+            CHANGED=( $(printf '%s\n' "${CHANGED[@]}" | grep -v "^$LINE" | cat) )
+
+            if [[ -z "${CHANGED[@]}" ]]; then
+              echo "All files are in .dockerignore -> no new version"
+              exit 0
+            fi
+          done < .dockerignore
+
+          if [[ -n "${CHANGED[@]}" ]]; then
+              echo new-version=true >> $GITHUB_OUTPUT
+              echo "Files"
+              printf '%s\n' "${CHANGED[@]}"
+              echo "are not in .dockerignore -> it's new version"
+          fi
+
+      - name: Get commit message
+        if: ${{ steps.check-version.outputs.new-version }}
+        run: |
+          COMMIT_MSG="$(git log --pretty=format:"%s" -n 1)"
+          VERSION_FRAGMENT=$(echo $COMMIT_MSG | awk '{ print $1 }' | sed 's/://g')
+          if [[ "$VERSION_FRAGMENT" != 'feature' && "$VERSION_FRAGMENT" != 'major' && "$VERSION_FRAGMENT" != 'bug' ]]; then
+            VERSION_FRAGMENT='bug'
+          fi
+          echo "VERSION_FRAGMENT=$VERSION_FRAGMENT" >> $GITHUB_ENV
+
+      - name: Bump patch version
+        if: ${{ steps.check-version.outputs.new-version }}
+        id: bump-version
+        uses: christian-draeger/increment-semantic-version@1.0.2
+        with:
+          current-version: ${{ steps.previous-tag.outputs.tag }}
+          version-fragment: ${{ env.VERSION_FRAGMENT }}
+
+      - run: |
+          echo tag=${{ steps.bump-version.outputs.next-version || steps.previous-tag.outputs.tag || github.ref_name }} >> $GITHUB_OUTPUT
+          echo image_name=${{ vars.DOCKER_REGISTRY }}/${{ github.repository }} >> $GITHUB_OUTPUT
+        id: image-tag-name
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ vars.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          build-args:
+            APP_VERSION=${{ github.ref_name == 'master' && steps.image-tag-name.outputs.tag || github.ref_name }}
+          tags: |
+            ${{ steps.image-tag-name.outputs.image_name }}:${{ steps.image-tag-name.outputs.tag }}
+            ${{ steps.image-tag-name.outputs.image_name }}:latest
+          cache-from: type=registry,ref=${{ steps.image-tag-name.outputs.image_name }}-buildcache:${{ github.ref_name }}
+          cache-to: type=registry,ref=${{ steps.image-tag-name.outputs.image_name }}-buildcache:${{ github.ref_name }},mode=max
+
+      - name: Failure notify
+        if: ${{ failure() }}
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ ${{ github.actor }} pushed changes and job ${{ github.job }} failed.
+            see workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  release:
+    name: Release
+    if: ${{ github.ref_name == 'master' && needs.build.outputs.image_tag != needs.build.outputs.previous_tag }}
+    runs-on: ubuntu-22.04
+    needs:
+      - build
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Make changelog
+        shell: bash
+        run: |
+          MY_SHA="$(git log -1 --format=format:"%h" ${{ needs.build.outputs.previous_tag }})"
+          GIT_LOG="$(git log --pretty=format:"* %s" $MY_SHA..HEAD | uniq)"
+          echo "### Changes" > RELEASE.md
+          echo "$GIT_LOG" >> RELEASE.md
+
+      - name: Create release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.build.outputs.image_tag }}
+          release_name: v${{ needs.build.outputs.image_tag }}
+          draft: false
+          prerelease: false
+          body_path: RELEASE.md
+
+  deploy:
+    name: Deploy
+    needs:
+      - build
+    uses: murtll/mcserver-beat/.github/workflows/deploy.yml@master
+    if: ${{ github.ref_name == 'master' }}
+    secrets: inherit
+    with:
+      image: ${{ needs.build.outputs.image_name }}
+      tag: ${{ needs.build.outputs.image_tag }}
