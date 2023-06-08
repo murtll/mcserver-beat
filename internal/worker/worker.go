@@ -20,6 +20,7 @@ func Start() {
 		}
 		rawBody := make([]byte, res.ContentLength)
 		res.Body.Read(rawBody)
+		log.Default().Printf("Got data: %s.", string(rawBody))
 		var body map[string]any
 		err = json.Unmarshal(rawBody, &body)
 		if err != nil {
