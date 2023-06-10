@@ -121,29 +121,21 @@ jobs:
     runs-on: ubuntu-22.04
     needs:
       - build
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Make changelog
-        shell: bash
-        run: |
-          MY_SHA="$(git log -1 --format=format:"%h" ${{ needs.build.outputs.previous_tag }})"
-          GIT_LOG="$(git log --pretty=format:"* %s" $MY_SHA..HEAD | uniq)"
-          echo "### Changes" > RELEASE.md
-          echo "$GIT_LOG" >> RELEASE.md
-
-      - name: Create release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Create release"
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ needs.build.outputs.image_tag }}
-          release_name: v${{ needs.build.outputs.image_tag }}
-          draft: false
+          tag: ${{ needs.build.outputs.tag }}
           prerelease: false
-          body_path: RELEASE.md
+          name: v${{ needs.build.outputs.tag }}
+          commit: ${{ github.ref_name }}
+          generateReleaseNotes: true
 
   deploy:
     name: Deploy

@@ -28,6 +28,7 @@ services:
       traefik.http.services.beat.loadBalancer.server.port: ${PORT}
       traefik.http.middlewares.beat-stripprefix.stripprefix.prefixes: ${PATH_PREFIX}
       traefik.http.middlewares.beat-compress.compress: true
+      traefik.http.middlewares.cors-headers.headers.customresponseheaders.access-control-allow-origin: '*'
       traefik.http.routers.beat.middlewares: beat-stripprefix,beat-compress
     healthcheck:
       test: ["CMD", "/usr/bin/beat", "--health"]
