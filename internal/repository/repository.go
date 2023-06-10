@@ -16,8 +16,6 @@ var ctx = context.Background()
 func Store(names []string, ttl time.Duration) error {
 	key := utils.JSONTime(time.Now()).RoundHour().String()
 
-	names = []string{}
-
 	tmp := make([]interface{}, len(names))
 	for i, v := range names {
 		tmp[i] = v
