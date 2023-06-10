@@ -29,7 +29,7 @@ services:
       traefik.http.middlewares.beat-stripprefix.stripprefix.prefixes: ${PATH_PREFIX}
       traefik.http.middlewares.beat-compress.compress: true
       traefik.http.middlewares.cors-headers.headers.customresponseheaders.access-control-allow-origin: '*'
-      traefik.http.routers.beat.middlewares: beat-stripprefix,beat-compress
+      traefik.http.routers.beat.middlewares: beat-stripprefix,beat-compress,cors-headers
     healthcheck:
       test: ["CMD", "/usr/bin/beat", "--health"]
       interval: 10s
