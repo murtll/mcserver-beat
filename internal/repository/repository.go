@@ -20,12 +20,8 @@ func Store(names []string, ttl time.Duration) error {
 	for i, v := range names {
 		tmp[i] = v
 	}
-	var err error = nil
-	if (len(names) == 0) {
-		err = client.SAdd(ctx, key, []interface{}{0}...).Err()
-	} else {
-		err = client.SAdd(ctx, key, tmp...).Err()
-	}
+	
+	err := client.SAdd(ctx, key, tmp...).Err()
 	if err != nil {
 		return err
 	}
