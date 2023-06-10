@@ -15,7 +15,6 @@ services:
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
       POLLING_URL: ${POLLING_URL}
-      POLLING_SCHEMA: ${POLLING_SCHEMA}
     depends_on:
       redis:
         condition: service_healthy

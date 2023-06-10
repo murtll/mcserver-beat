@@ -15,40 +15,26 @@ import (
 var client = redis.NewClient(config.RedisOptions)
 var ctx = context.Background()
 
-func Store(count int, ttl time.Duration) error {
+func Store(names []string, ttl time.Duration) error {
 	key := utils.JSONTime(time.Now()).RoundHour().String()
-	stringCurrentCount, err := client.Get(ctx, key).Result()
 
+	tmp := make([]interface{}, len(names))
+	for i, v := range names {
+		tmp[i] = v
+	}
+	err := client.SAdd(ctx, key, tmp...).Err()
 	if err != nil {
-		if err == redis.Nil {
-			err = client.Set(ctx, key, count, ttl).Err()
-			if err != nil {
-				return err
-			}
-			return nil
-		}
 		return err
 	}
-
-	currentCount, err := strconv.Atoi(stringCurrentCount)
+	err = client.Expire(ctx, key, ttl).Err()
 	if err != nil {
 		return err
 	}
 
-	if currentCount < count {
-		ttl, err := client.TTL(ctx, key).Result()
-		if err != nil {
-			return err
-		}
-		err = client.Set(ctx, key, count, ttl).Err()
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-func Load(count int) (map[int]int, error) {
+func Load(count int) (map[int][]string, error) {
 	stringKeys, err := client.Keys(ctx, "*").Result()
 	if err != nil {
 		return nil, err
@@ -71,15 +57,13 @@ func Load(count int) (map[int]int, error) {
 	sort.Ints(keys)
 	keys = keys[len(keys) - count:]
 
-	result := make(map[int]int)
+	result := make(map[int][]string)
 	for _, k := range keys {
-		value, err := client.Get(ctx, strconv.Itoa(k)).Result()
+		result[k], err = client.SInter(ctx, strconv.Itoa(k)).Result()
 		if err != nil {
-			return nil, err
-		}
-		result[k], err = strconv.Atoi(value)
-		if err != nil {
-			return nil, err
+			log.Default().Printf("Was not able to get Redis key '%d': %s. Skipping.", k, err)
+			delete(result, k)
+			continue
 		}
 	}
 

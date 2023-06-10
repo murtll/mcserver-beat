@@ -8,8 +8,8 @@ import (
 	"github.com/murtll/mcserver-beat/internal/repository"
 )
 
-func Store(count int, ttl time.Duration) error {
-	return repository.Store(count, ttl)
+func Store(names []string, ttl time.Duration) error {
+	return repository.Store(names, ttl)
 }
 
 func Load(count int) (*entities.GraphResponse, error) {
@@ -20,11 +20,17 @@ func Load(count int) (*entities.GraphResponse, error) {
 
 	max := 0
 	data := make([]entities.PlayerCount, 0)
-	for k, v := range rawData {
-		if max < v {
-			max = v
+	for k, names := range rawData {
+		nameCount := len(names)
+		if max < nameCount {
+			max = nameCount
 		}
-		data = append(data, entities.PlayerCount{Time: utils.JSONTime(time.UnixMilli(int64(k))), Number: v})
+		data = append(data, 
+			entities.PlayerCount{
+				Time: utils.JSONTime(time.UnixMilli(int64(k))), 
+				Number: nameCount,
+				Players: names,
+			})
 	}
 	return &entities.GraphResponse{
 		Max: max,

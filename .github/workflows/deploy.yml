@@ -58,7 +58,6 @@ jobs:
           REDIS_HOST: ${{ vars.REDIS_HOST }}
           REDIS_PORT: ${{ vars.REDIS_PORT }}
           POLLING_URL: ${{ vars.POLLING_URL }}
-          POLLING_SCHEMA: ${{ vars.POLLING_SCHEMA }}
 
       - name: Deploy
         run: |

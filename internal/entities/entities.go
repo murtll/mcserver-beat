@@ -21,4 +21,16 @@ type HealthResponse struct {
 type PlayerCount struct {
 	Number int `json:"number"`
 	Time   utils.JSONTime `json:"time"`
+	Players []string `json:"players"`
+}
+
+type MinetoolsPollingResponse struct {
+	MaxPlayers int
+	Motd string
+	Playerlist []string
+	Players int
+	Plugins []string
+	Software string
+	Version string
+	Status string `json:"status"`
 }

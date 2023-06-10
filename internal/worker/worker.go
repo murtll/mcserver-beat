@@ -8,6 +8,7 @@ import (
 
 	"github.com/murtll/mcserver-beat/config"
 	"github.com/murtll/mcserver-beat/internal/service"
+	"github.com/murtll/mcserver-beat/internal/entities"
 )
 
 func Start() {
@@ -21,15 +22,14 @@ func Start() {
 		rawBody := make([]byte, res.ContentLength)
 		res.Body.Read(rawBody)
 		log.Default().Printf("Got data: %s.", string(rawBody))
-		var body map[string]any
+		var body entities.MinetoolsPollingResponse
 		err = json.Unmarshal(rawBody, &body)
 		if err != nil {
 			log.Default().Printf("Was not able to unmarshal %s: %s.", rawBody, err)
 			continue
 		}
-		data := int(body[config.PollingSchema].(float64))
-		log.Default().Printf("Got '%d' count. Saving.", data)
-		err = service.Store(data, config.EntryTTL)
+		log.Default().Printf("Got %v players. Saving.", body.Playerlist)
+		err = service.Store(body.Playerlist, config.EntryTTL)
 		if err != nil {
 			log.Default().Printf("Was not able to store data: %s", err)
 		}
