@@ -131,9 +131,9 @@ jobs:
       - name: "Create release"
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ needs.build.outputs.tag }}
+          tag: ${{ needs.build.outputs.image_tag }}
           prerelease: false
-          name: v${{ needs.build.outputs.tag }}
+          name: v${{ needs.build.outputs.image_tag }}
           commit: ${{ github.ref_name }}
           generateReleaseNotes: true
 
