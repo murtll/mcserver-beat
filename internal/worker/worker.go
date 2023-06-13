@@ -28,6 +28,10 @@ func Start() {
 			log.Default().Printf("Was not able to unmarshal %s: %s.", rawBody, err)
 			continue
 		}
+		if body.Players == 0 {
+			log.Default().Printf("Got %d players. Skipping.", body.Players)
+			continue
+		}
 		log.Default().Printf("Got %v players. Saving.", body.Playerlist)
 		err = service.Store(body.Playerlist, config.EntryTTL)
 		if err != nil {
